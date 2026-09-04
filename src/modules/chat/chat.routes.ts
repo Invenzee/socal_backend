@@ -31,7 +31,8 @@ const messageSchema = z.object({
 chatRouter.get(
   "/",
   asyncHandler(async (req, res) => {
-    const items = await listConversations(req.user!.id);
+    const side = req.query.side === "buying" || req.query.side === "selling" ? req.query.side : undefined;
+    const items = await listConversations(req.user!.id, side);
     res.json({ success: true, data: { items } });
   }),
 );

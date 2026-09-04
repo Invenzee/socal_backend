@@ -92,7 +92,7 @@ adminRouter.get(
   asyncHandler(async (req, res) => {
     const { page, limit, skip } = parsePagination(req.query as Record<string, unknown>);
     const filter: Record<string, unknown> = {};
-    if (req.query.role) filter.role = req.query.role;
+    if (req.query.role) filter.originalRole = req.query.role;
     if (req.query.status) filter.status = req.query.status;
     if (req.query.q) {
       filter.$or = [
@@ -122,7 +122,18 @@ adminRouter.patch(
     if (user.role === "admin" && req.body.status === "suspended") {
       throw ApiError.badRequest("Cannot suspend the admin account.");
     }
-    if (req.body.role) user.role = req.body.role;
+    if (req.body.role) {
+      user.role = req.body.role;
+      if (req.body.role === "admin") {
+        user.originalRole = "admin";
+        user.currentMode = "buyer";
+      } else {
+        user.currentMode = req.body.role;
+        if (req.body.role === "seller" && !user.sellerEnabledAt) {
+          user.sellerEnabledAt = new Date();
+        }
+      }
+    }
     if (req.body.status) user.status = req.body.status;
     await user.save();
     res.json({ success: true, data: { item: user } });

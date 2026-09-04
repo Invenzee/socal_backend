@@ -32,6 +32,8 @@ export async function seedAdmin() {
     existing.phoneCountry = "US";
     existing.passwordHash = passwordHash;
     existing.role = "admin";
+    existing.originalRole = "admin";
+    existing.currentMode = "buyer";
     existing.status = "active";
     existing.emailVerifiedAt = new Date();
     await existing.save();
@@ -46,6 +48,8 @@ export async function seedAdmin() {
     phoneCountry: "US",
     passwordHash,
     role: "admin",
+    originalRole: "admin",
+    currentMode: "buyer",
     status: "active",
     emailVerifiedAt: new Date(),
   });

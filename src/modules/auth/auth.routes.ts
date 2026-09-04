@@ -8,6 +8,7 @@ import {
   loginSchema,
   registerSchema,
   resetPasswordSchema,
+  setModeSchema,
   updateMeSchema,
   verifyEmailSchema,
 } from "./auth.validators.js";
@@ -20,6 +21,7 @@ authRouter.post("/logout", ctrl.logout);
 authRouter.post("/refresh", ctrl.refresh);
 authRouter.get("/me", authenticate, ctrl.me);
 authRouter.patch("/me", authenticate, validate(updateMeSchema), ctrl.patchMe);
+authRouter.patch("/mode", authenticate, validate(setModeSchema), ctrl.patchMode);
 authRouter.post("/verify-email", optionalAuth, authLimiter, validate(verifyEmailSchema), ctrl.verify);
 authRouter.post("/resend-verification", optionalAuth, authLimiter, validate(emailOnlySchema), ctrl.resend);
 authRouter.post("/forgot-password", authLimiter, validate(emailOnlySchema), ctrl.forgot);

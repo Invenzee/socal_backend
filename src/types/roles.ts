@@ -1,6 +1,9 @@
 export const USER_ROLES = ["admin", "buyer", "seller"] as const;
 export type UserRole = (typeof USER_ROLES)[number];
 
+export const USER_MODES = ["buyer", "seller"] as const;
+export type UserMode = (typeof USER_MODES)[number];
+
 export const USER_STATUSES = ["active", "suspended"] as const;
 export type UserStatus = (typeof USER_STATUSES)[number];
 

@@ -17,20 +17,19 @@ import { comparePassword, hashPassword } from "../../lib/password.js";
 import { normalizePhone } from "../../lib/phone.js";
 import { RefreshToken } from "../../models/refresh-token.model.js";
 import { User } from "../../models/user.model.js";
-import type { UserRole } from "../../types/roles.js";
+import { canBuyOf, canSellOf, sessionRoleOf, type ModeUser } from "../../lib/user-mode.js";
 import type { CountryCode } from "libphonenumber-js";
 
 const VERIFY_TTL_MS = 15 * 60 * 1000;
 const RESET_TTL_MS = 30 * 60 * 1000;
 const RESEND_COOLDOWN_MS = 60 * 1000;
 
-function publicUser(user: {
+function publicUser(user: ModeUser & {
   _id: Types.ObjectId;
   fullName: string;
   email: string;
   phone: string;
   phoneCountry: string;
-  role: UserRole;
   status: string;
   emailVerifiedAt?: Date | null;
   createdAt?: Date;
@@ -41,20 +40,21 @@ function publicUser(user: {
     email: user.email,
     phone: user.phone,
     phoneCountry: user.phoneCountry,
-    role: user.role,
+    role: sessionRoleOf(user),
     status: user.status,
     emailVerified: Boolean(user.emailVerifiedAt),
+    canSell: canSellOf(user),
+    canBuy: canBuyOf(user),
   };
 }
 
-async function issueTokens(user: {
+async function issueTokens(user: ModeUser & {
   _id: Types.ObjectId;
-  role: UserRole;
   emailVerifiedAt?: Date | null;
 }) {
   const accessToken = signAccessToken({
     sub: String(user._id),
-    role: user.role,
+    role: sessionRoleOf(user),
     emailVerified: Boolean(user.emailVerifiedAt),
   });
   const refreshToken = signRefreshToken(String(user._id));
@@ -114,6 +114,9 @@ export async function registerUser(input: {
     phoneCountry: country,
     passwordHash: await hashPassword(input.password),
     role: input.role,
+    originalRole: input.role,
+    currentMode: input.role,
+    sellerEnabledAt: input.role === "seller" ? new Date() : null,
     status: "active",
   });
 
@@ -184,9 +187,25 @@ export async function updateMe(
     user.phone = e164;
     user.phoneCountry = country;
   }
-  if (input.role === "seller" && user.role === "buyer") {
-    user.role = "seller";
+  await user.save();
+  return publicUser(user);
+}
+
+export async function setMode(userId: string, mode: "buyer" | "seller") {
+  const user = await User.findById(userId);
+  if (!user) throw ApiError.notFound("User not found.");
+  if (user.role === "admin" || user.originalRole === "admin") {
+    throw ApiError.forbidden("Admin accounts cannot switch marketplace mode.");
   }
+
+  if (!user.originalRole) {
+    user.originalRole = user.role === "seller" ? "seller" : "buyer";
+  }
+  if (mode === "seller" && !user.sellerEnabledAt) {
+    user.sellerEnabledAt = new Date();
+  }
+  user.currentMode = mode;
+  user.role = mode;
   await user.save();
   return publicUser(user);
 }

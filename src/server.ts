@@ -6,12 +6,14 @@ import { configureCloudinary } from "./config/cloudinary.js";
 import { attachSocket } from "./modules/chat/socket.js";
 import { seedAdmin } from "./seeds/admin.seed.js";
 import { seedTaxonomy } from "./seeds/taxonomy.seed.js";
+import { backfillUserModes } from "./seeds/user-modes.seed.js";
 
 async function bootstrap() {
   await connectDb();
   configureCloudinary();
   await seedAdmin();
   await seedTaxonomy();
+  await backfillUserModes();
 
   const app = createApp();
   const server = http.createServer(app);

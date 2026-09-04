@@ -4,6 +4,7 @@ import { ApiError } from "../lib/apiError.js";
 import { verifyAccessToken } from "../lib/jwt.js";
 import { User } from "../models/user.model.js";
 import type { UserRole } from "../types/roles.js";
+import { canBuyOf, canSellOf, sessionRoleOf } from "../lib/user-mode.js";
 
 function readAccessToken(req: Request) {
   const cookieToken = req.cookies?.[ACCESS_COOKIE] as string | undefined;
@@ -19,15 +20,19 @@ export async function authenticate(req: Request, _res: Response, next: NextFunct
     if (!token) throw ApiError.unauthorized();
 
     const payload = verifyAccessToken(token);
-    const user = await User.findById(payload.sub).select("role status emailVerifiedAt");
+    const user = await User.findById(payload.sub).select(
+      "role originalRole currentMode sellerEnabledAt status emailVerifiedAt",
+    );
     if (!user || user.status !== "active") {
       throw ApiError.unauthorized("Account is not available.");
     }
 
     req.user = {
       id: String(user._id),
-      role: user.role,
+      role: sessionRoleOf(user),
       emailVerified: Boolean(user.emailVerifiedAt),
+      canSell: canSellOf(user),
+      canBuy: canBuyOf(user),
     };
     next();
   } catch (error) {
@@ -65,6 +70,28 @@ export function requireRole(...roles: UserRole[]) {
       return;
     }
     next();
+  };
+}
+
+export function requireCapability(capability: "sell" | "buy") {
+  return (req: Request, _res: Response, next: NextFunction) => {
+    if (!req.user) {
+      next(ApiError.unauthorized());
+      return;
+    }
+    if (req.user.role === "admin") {
+      next();
+      return;
+    }
+    if (capability === "sell" && req.user.canSell) {
+      next();
+      return;
+    }
+    if (capability === "buy" && req.user.canBuy) {
+      next();
+      return;
+    }
+    next(ApiError.forbidden());
   };
 }
 

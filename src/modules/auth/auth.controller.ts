@@ -10,6 +10,7 @@ import {
   registerUser,
   resendVerification,
   resetPassword,
+  setMode,
   updateMe,
   verifyEmail,
 } from "./auth.service.js";
@@ -56,6 +57,11 @@ export const me = asyncHandler(async (req, res) => {
 
 export const patchMe = asyncHandler(async (req, res) => {
   const user = await updateMe(req.user!.id, req.body);
+  res.json({ success: true, data: { user } });
+});
+
+export const patchMode = asyncHandler(async (req, res) => {
+  const user = await setMode(req.user!.id, req.body.mode);
   res.json({ success: true, data: { user } });
 });
 

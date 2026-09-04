@@ -33,5 +33,8 @@ export const updateMeSchema = z.object({
   fullName: z.string().trim().min(2).max(80).optional(),
   phone: z.string().min(6).optional(),
   phoneCountry: z.string().length(2).optional(),
-  role: z.enum(["seller"]).optional(),
+});
+
+export const setModeSchema = z.object({
+  mode: z.enum(["buyer", "seller"]),
 });

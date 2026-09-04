@@ -7,6 +7,8 @@ declare global {
         id: string;
         role: import("../types/roles.js").UserRole;
         emailVerified: boolean;
+        canSell: boolean;
+        canBuy: boolean;
       };
     }
   }

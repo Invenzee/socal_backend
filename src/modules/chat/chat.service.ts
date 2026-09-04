@@ -26,10 +26,15 @@ function isBuyer(conv: { buyer: unknown }, userId: string) {
   return id === userId;
 }
 
-export async function listConversations(userId: string) {
-  const items = await Conversation.find({
-    $or: [{ buyer: userId }, { seller: userId }],
-  })
+export async function listConversations(userId: string, side?: "buying" | "selling") {
+  const filter =
+    side === "buying"
+      ? { buyer: userId }
+      : side === "selling"
+        ? { seller: userId }
+        : { $or: [{ buyer: userId }, { seller: userId }] };
+
+  const items = await Conversation.find(filter)
     .sort({ lastMessageAt: -1 })
     .populate(POPULATE);
 
