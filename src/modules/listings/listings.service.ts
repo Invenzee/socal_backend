@@ -225,7 +225,7 @@ export async function revealPhone(userId: string, listingId: string) {
 export async function listAdmin(query: Record<string, unknown>) {
   const { page, limit, skip } = parsePagination(query);
   const filter: Record<string, unknown> = {};
-  if (query.status) filter.status = query.status as ListingStatus;
+  if (query.status && query.status !== "all") filter.status = query.status as ListingStatus;
   if (query.q) filter.title = new RegExp(String(query.q).trim(), "i");
   const [items, total] = await Promise.all([
     Listing.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).populate(POPULATE),
