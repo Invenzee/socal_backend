@@ -106,7 +106,7 @@ async function upsertNamed(
     await Model.findOneAndUpdate(
       { slug: slugify(name) },
       { name, slug: slugify(name), isActive: true, sortOrder: index },
-      { upsert: true, new: true },
+      { upsert: true, returnDocument: "after" },
     );
   }
 }
@@ -123,7 +123,7 @@ export async function seedTaxonomy() {
     const make = await Make.findOneAndUpdate(
       { slug: slugify(makeName) },
       { name: makeName, slug: slugify(makeName), isActive: true, sortOrder: makeOrder },
-      { upsert: true, new: true },
+      { upsert: true, returnDocument: "after" },
     );
     makeOrder += 1;
 
@@ -137,7 +137,7 @@ export async function seedTaxonomy() {
           isActive: true,
           sortOrder: index,
         },
-        { upsert: true, new: true },
+        { upsert: true, returnDocument: "after" },
       );
     }
   }

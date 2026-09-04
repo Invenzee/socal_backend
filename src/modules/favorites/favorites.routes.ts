@@ -35,7 +35,7 @@ favoritesRouter.post(
     const item = await Favorite.findOneAndUpdate(
       { user: req.user!.id, listing: listing._id },
       { user: req.user!.id, listing: listing._id },
-      { upsert: true, new: true },
+      { upsert: true, returnDocument: "after" },
     );
     res.status(201).json({ success: true, data: { item } });
   }),
