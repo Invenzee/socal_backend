@@ -14,8 +14,12 @@ import { User } from "../../models/user.model.js";
 import { Listing } from "../../models/listing.model.js";
 import { Lead } from "../../models/lead.model.js";
 import { Conversation } from "../../models/conversation.model.js";
+import { Message } from "../../models/message.model.js";
+import { Favorite } from "../../models/favorite.model.js";
+import { RefreshToken } from "../../models/refresh-token.model.js";
 import { paginationMeta, parsePagination } from "../../lib/paginate.js";
 import { USER_ROLES, USER_STATUSES } from "../../types/roles.js";
+import { isStaff } from "../../lib/user-mode.js";
 
 export const adminRouter = Router();
 adminRouter.use(authenticate, requireRole("admin"));
@@ -137,6 +141,39 @@ adminRouter.patch(
     if (req.body.status) user.status = req.body.status;
     await user.save();
     res.json({ success: true, data: { item: user } });
+  }),
+);
+
+adminRouter.delete(
+  "/users/:id",
+  asyncHandler(async (req, res) => {
+    const user = await User.findById(param(req.params.id));
+    if (!user) throw ApiError.notFound("User not found.");
+    if (String(user._id) === req.user!.id) {
+      throw ApiError.badRequest("You cannot delete your own account.");
+    }
+    if (isStaff(user)) {
+      throw ApiError.badRequest("Cannot delete an admin account.");
+    }
+
+    const listingIds = await Listing.find({ seller: user._id }).distinct("_id");
+    const conversationIds = await Conversation.find({
+      $or: [{ buyer: user._id }, { seller: user._id }, { listing: { $in: listingIds } }],
+    }).distinct("_id");
+
+    await Message.deleteMany({ conversation: { $in: conversationIds } });
+    await Conversation.deleteMany({ _id: { $in: conversationIds } });
+    await Lead.deleteMany({
+      $or: [{ buyer: user._id }, { seller: user._id }, { listing: { $in: listingIds } }],
+    });
+    await Favorite.deleteMany({
+      $or: [{ user: user._id }, { listing: { $in: listingIds } }],
+    });
+    await Listing.deleteMany({ seller: user._id });
+    await RefreshToken.deleteMany({ user: user._id });
+    await user.deleteOne();
+
+    res.json({ success: true, data: { deleted: true } });
   }),
 );
 
