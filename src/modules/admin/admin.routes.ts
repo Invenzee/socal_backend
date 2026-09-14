@@ -19,7 +19,10 @@ import { Favorite } from "../../models/favorite.model.js";
 import { RefreshToken } from "../../models/refresh-token.model.js";
 import { paginationMeta, parsePagination } from "../../lib/paginate.js";
 import { USER_ROLES, USER_STATUSES } from "../../types/roles.js";
+import { OFFER_STATUSES } from "../../types/offers.js";
 import { isStaff } from "../../lib/user-mode.js";
+import { OfferLead } from "../../models/offer-lead.model.js";
+import { OfferPriceTemplate } from "../../emails/offer-price.js";
 
 export const adminRouter = Router();
 adminRouter.use(authenticate, requireRole("admin"));
@@ -192,5 +195,102 @@ adminRouter.get(
       Lead.countDocuments(),
     ]);
     res.json({ success: true, data: { items, meta: paginationMeta(total, page, limit) } });
+  }),
+);
+
+const OFFER_POPULATE = [
+  { path: "make", select: "name" },
+  { path: "model", select: "name" },
+  { path: "condition", select: "name" },
+] as const;
+
+function taxonomyName(value: unknown) {
+  if (value && typeof value === "object" && "name" in value) return String((value as { name: string }).name);
+  return "";
+}
+
+adminRouter.get(
+  "/offers",
+  asyncHandler(async (req, res) => {
+    const { page, limit, skip } = parsePagination(req.query as Record<string, unknown>);
+    const filter: Record<string, unknown> = {};
+    if (req.query.status) filter.status = req.query.status;
+    if (req.query.q) {
+      const term = new RegExp(String(req.query.q).trim(), "i");
+      filter.$or = [{ fullName: term }, { email: term }, { phone: term }, { licensePlate: term }, { city: term }];
+    }
+    const [items, total] = await Promise.all([
+      OfferLead.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).populate([...OFFER_POPULATE]),
+      OfferLead.countDocuments(filter),
+    ]);
+    res.json({ success: true, data: { items, meta: paginationMeta(total, page, limit) } });
+  }),
+);
+
+const offerPatchSchema = z.object({
+  status: z.enum(OFFER_STATUSES),
+});
+
+adminRouter.patch(
+  "/offers/:id",
+  validate(offerPatchSchema),
+  asyncHandler(async (req, res) => {
+    const item = await OfferLead.findByIdAndUpdate(
+      param(req.params.id),
+      { status: req.body.status },
+      { returnDocument: "after" },
+    ).populate([...OFFER_POPULATE]);
+    if (!item) throw ApiError.notFound("Offer lead not found.");
+    res.json({ success: true, data: { item } });
+  }),
+);
+
+const offerEmailSchema = z.object({
+  price: z.coerce.number().positive(),
+  message: z.string().trim().max(2000).optional().default(""),
+});
+
+adminRouter.post(
+  "/offers/:id/email",
+  validate(offerEmailSchema),
+  asyncHandler(async (req, res) => {
+    const item = await OfferLead.findById(param(req.params.id)).populate([...OFFER_POPULATE]);
+    if (!item) throw ApiError.notFound("Offer lead not found.");
+
+    const vehicle = [item.year, taxonomyName(item.make), taxonomyName(item.model)].filter(Boolean).join(" ");
+    const price = new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 0,
+    }).format(req.body.price);
+
+    await sendEmail(
+      item.email,
+      `Your offer for ${vehicle || "your truck"}`,
+      OfferPriceTemplate({
+        name: item.fullName,
+        vehicle: vehicle || "your truck",
+        price,
+        message: req.body.message || undefined,
+      }),
+    );
+
+    item.status = "offered";
+    item.offerPrice = req.body.price;
+    item.offerMessage = req.body.message || "";
+    item.offeredAt = new Date();
+    await item.save();
+
+    res.json({ success: true, data: { item } });
+  }),
+);
+
+adminRouter.delete(
+  "/offers/:id",
+  asyncHandler(async (req, res) => {
+    const item = await OfferLead.findById(param(req.params.id));
+    if (!item) throw ApiError.notFound("Offer lead not found.");
+    await item.deleteOne();
+    res.json({ success: true, data: { deleted: true } });
   }),
 );
