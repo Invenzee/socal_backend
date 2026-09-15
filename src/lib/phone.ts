@@ -3,7 +3,8 @@ import { ApiError } from "./apiError.js";
 
 export function normalizePhone(raw: string, defaultCountry: CountryCode = "US") {
   const parsed = parsePhoneNumberFromString(raw, defaultCountry);
-  if (!parsed?.isValid()) {
+  // isPossible (length/format) not isValid — reserved NPAs like 555 still parse as real E.164.
+  if (!parsed?.isPossible()) {
     throw ApiError.badRequest("Enter a valid phone number for the selected country.", "INVALID_PHONE");
   }
   return {
