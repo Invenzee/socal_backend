@@ -38,6 +38,13 @@ export const listingBodySchema = z.object({
   images: z.array(imageSchema).min(1).max(8),
 });
 
+export const guestListingBodySchema = listingBodySchema.extend({
+  guestId: z.uuid(),
+  guestEmail: z.email().optional(),
+  guestName: z.string().trim().min(2).max(80).optional(),
+  guestPhone: z.string().min(6).optional(),
+});
+
 export const listingQuerySchema = z.object({
   page: z.string().optional(),
   limit: z.string().optional(),

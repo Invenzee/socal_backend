@@ -4,6 +4,8 @@ import { OFFER_STATUSES } from "../types/offers.js";
 const offerLeadSchema = new Schema(
   {
     guestId: { type: String, required: true, index: true },
+    user: { type: Schema.Types.ObjectId, ref: "User", default: null, index: true },
+    claimedAt: { type: Date, default: null },
     fullName: { type: String, required: true, trim: true },
     email: { type: String, required: true, lowercase: true, trim: true, index: true },
     phone: { type: String, required: true, trim: true },

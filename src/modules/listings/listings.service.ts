@@ -1,10 +1,14 @@
+import { env } from "../../config/env.js";
+import { GuestListingReceivedTemplate } from "../../emails/guest-listing-received.js";
 import { ListingSubmittedTemplate } from "../../emails/listing-submitted.js";
 import { NewLeadTemplate } from "../../emails/new-lead.js";
 import { sendEmail } from "../../emails/send.js";
 import { ApiError } from "../../lib/apiError.js";
 import { paginationMeta, parsePagination } from "../../lib/paginate.js";
+import { normalizePhone } from "../../lib/phone.js";
 import { Lead } from "../../models/lead.model.js";
 import { Listing } from "../../models/listing.model.js";
+import { OfferLead } from "../../models/offer-lead.model.js";
 import { TruckModel } from "../../models/truck-model.model.js";
 import { User } from "../../models/user.model.js";
 import type { ListingStatus } from "../../types/roles.js";
@@ -87,9 +91,10 @@ export async function listPublic(query: Record<string, unknown>) {
   };
 }
 
-function sellerIdOf(listing: { seller: unknown }) {
-  const seller = listing.seller as { _id?: unknown } | string;
-  if (seller && typeof seller === "object") return String(seller._id);
+function sellerIdOf(listing: { seller?: unknown }) {
+  const seller = listing.seller as { _id?: unknown } | string | null | undefined;
+  if (!seller) return "";
+  if (typeof seller === "object") return String(seller._id || "");
   return String(seller);
 }
 
@@ -164,10 +169,57 @@ export async function createListing(userId: string, body: Record<string, unknown
   return Listing.findById(listing._id).populate(POPULATE);
 }
 
+export async function createGuestListing(body: Record<string, unknown>) {
+  const guestId = String(body.guestId || "");
+  const truckModel = await TruckModel.findById(body.model);
+  if (!truckModel || String(truckModel.make) !== String(body.make)) {
+    throw ApiError.badRequest("Model does not belong to the selected make.");
+  }
+
+  const offer = await OfferLead.findOne({ guestId }).sort({ createdAt: -1 });
+  const guestEmail = String(offer?.email || body.guestEmail || "")
+    .toLowerCase()
+    .trim();
+  const guestName = String(offer?.fullName || body.guestName || "").trim();
+  let guestPhone = String(offer?.phone || "").trim();
+  if (!guestPhone && body.guestPhone) {
+    guestPhone = normalizePhone(String(body.guestPhone)).e164;
+  }
+  if (!guestEmail) {
+    throw ApiError.badRequest("Enter your email so we can send listing updates.");
+  }
+  if (!guestPhone) {
+    throw ApiError.badRequest("Enter a phone number for this listing.");
+  }
+
+  const listing = await Listing.create({
+    ...body,
+    guestId,
+    guestEmail,
+    guestName,
+    guestPhone,
+    contactPhone: guestPhone,
+    status: "pending",
+    rejectionReason: "",
+  });
+
+  await sendEmail(
+    guestEmail,
+    "We got your listing",
+    GuestListingReceivedTemplate({
+      name: guestName || "there",
+      title: listing.title,
+      signupUrl: env.APP_URL,
+    }),
+  );
+
+  return Listing.findById(listing._id).populate(POPULATE);
+}
+
 export async function updateListing(userId: string, id: string, body: Record<string, unknown>, isAdmin = false) {
   const listing = await Listing.findById(id);
   if (!listing) throw ApiError.notFound("Listing not found.");
-  if (!isAdmin && String(listing.seller) !== userId) throw ApiError.forbidden();
+  if (!isAdmin && sellerIdOf(listing) !== userId) throw ApiError.forbidden();
 
   Object.assign(listing, body);
   if (!isAdmin && listing.status === "approved") {
@@ -191,14 +243,18 @@ export async function updateListing(userId: string, id: string, body: Record<str
 export async function deleteListing(userId: string, id: string, isAdmin = false) {
   const listing = await Listing.findById(id);
   if (!listing) throw ApiError.notFound("Listing not found.");
-  if (!isAdmin && String(listing.seller) !== userId) throw ApiError.forbidden();
+  if (!isAdmin && sellerIdOf(listing) !== userId) throw ApiError.forbidden();
   await listing.deleteOne();
 }
 
 export async function revealPhone(userId: string, listingId: string) {
   const listing = await Listing.findById(listingId).populate("seller", "fullName email");
   if (!listing || listing.status !== "approved") throw ApiError.notFound("Listing not found.");
-  if (String(listing.seller) === userId) {
+  if (sellerIdOf(listing) === userId) {
+    return { phone: listing.contactPhone };
+  }
+
+  if (!listing.seller) {
     return { phone: listing.contactPhone };
   }
 

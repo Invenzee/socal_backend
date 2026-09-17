@@ -57,16 +57,20 @@ adminRouter.post(
   "/listings/:id/approve",
   asyncHandler(async (req, res) => {
     const listing = await setListingStatus(param(req.params.id), "approved");
-    const seller = listing.seller as unknown as { email: string; fullName: string };
-    await sendEmail(
-      seller.email,
-      "Your listing is live",
-      ListingApprovedTemplate({
-        name: seller.fullName,
-        title: listing.title,
-        url: `${env.APP_URL}/listings/${String(listing._id)}`,
-      }),
-    );
+    const seller = listing.seller as unknown as { email?: string; fullName?: string } | null;
+    const email = seller?.email || listing.guestEmail;
+    const name = seller?.fullName || listing.guestName || "there";
+    if (email) {
+      await sendEmail(
+        email,
+        "Your listing is live",
+        ListingApprovedTemplate({
+          name,
+          title: listing.title,
+          url: `${env.APP_URL}/listings/${String(listing._id)}`,
+        }),
+      );
+    }
     res.json({ success: true, data: { item: listing } });
   }),
 );
@@ -80,16 +84,20 @@ adminRouter.post(
   validate(rejectSchema),
   asyncHandler(async (req, res) => {
     const listing = await setListingStatus(param(req.params.id), "rejected", req.body.reason);
-    const seller = listing.seller as unknown as { email: string; fullName: string };
-    await sendEmail(
-      seller.email,
-      "Your listing was not approved",
-      ListingRejectedTemplate({
-        name: seller.fullName,
-        title: listing.title,
-        reason: req.body.reason,
-      }),
-    );
+    const seller = listing.seller as unknown as { email?: string; fullName?: string } | null;
+    const email = seller?.email || listing.guestEmail;
+    const name = seller?.fullName || listing.guestName || "there";
+    if (email) {
+      await sendEmail(
+        email,
+        "Your listing was not approved",
+        ListingRejectedTemplate({
+          name,
+          title: listing.title,
+          reason: req.body.reason,
+        }),
+      );
+    }
     res.json({ success: true, data: { item: listing } });
   }),
 );

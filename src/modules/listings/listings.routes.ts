@@ -1,14 +1,22 @@
 import { Router } from "express";
 import { authenticate, optionalAuth, requireCapability, requireVerified } from "../../middleware/authenticate.js";
+import { guestListingLimiter } from "../../middleware/rateLimit.js";
 import { validate } from "../../middleware/error.js";
 import * as ctrl from "./listings.controller.js";
-import { listingBodySchema } from "./listings.validators.js";
+import { guestListingBodySchema, listingBodySchema } from "./listings.validators.js";
 
 export const listingsRouter = Router();
 
 listingsRouter.get("/", ctrl.publicIndex);
 listingsRouter.get("/mine", authenticate, requireCapability("sell"), ctrl.mine);
 listingsRouter.get("/leads", authenticate, requireCapability("sell"), ctrl.sellerLeads);
+listingsRouter.post(
+  "/guest",
+  guestListingLimiter,
+  optionalAuth,
+  validate(guestListingBodySchema),
+  ctrl.createGuest,
+);
 listingsRouter.get("/:id", optionalAuth, ctrl.publicShow);
 listingsRouter.post(
   "/",

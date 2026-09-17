@@ -7,6 +7,7 @@ import { attachSocket } from "./modules/chat/socket.js";
 import { seedAdmin } from "./seeds/admin.seed.js";
 import { seedTaxonomy } from "./seeds/taxonomy.seed.js";
 import { backfillUserModes } from "./seeds/user-modes.seed.js";
+import { startListingClaimReminderJob } from "./jobs/listing-claim-reminder.js";
 
 async function bootstrap() {
   await connectDb();
@@ -21,6 +22,7 @@ async function bootstrap() {
 
   server.listen(env.PORT, "0.0.0.0", () => {
     console.log(`API listening on ${env.PORT}${env.API_PREFIX}`);
+    startListingClaimReminderJob();
   });
 }
 

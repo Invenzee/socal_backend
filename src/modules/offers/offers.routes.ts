@@ -10,11 +10,30 @@ import { OfferLead } from "../../models/offer-lead.model.js";
 import { Make } from "../../models/make.model.js";
 import { TruckModel } from "../../models/truck-model.model.js";
 import { Condition } from "../../models/condition.model.js";
-import { createOfferSchema } from "./offers.validators.js";
+import { createOfferSchema, latestOfferQuerySchema } from "./offers.validators.js";
 
 const DUPLICATE_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
 export const offersRouter = Router();
+
+offersRouter.get(
+  "/latest",
+  offerLimiter,
+  asyncHandler(async (req, res) => {
+    const parsed = latestOfferQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      throw parsed.error;
+    }
+    const item = await OfferLead.findOne({ guestId: parsed.data.guestId })
+      .sort({ createdAt: -1 })
+      .populate([
+        { path: "make", select: "name slug" },
+        { path: "model", select: "name slug" },
+        { path: "condition", select: "name slug" },
+      ]);
+    res.json({ success: true, data: { item: item || null } });
+  }),
+);
 
 offersRouter.post(
   "/",

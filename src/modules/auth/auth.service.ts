@@ -13,6 +13,7 @@ import {
   ttlToMs,
   verifyRefreshToken,
 } from "../../lib/jwt.js";
+import { claimGuestAssets } from "../../lib/claim-guest.js";
 import { comparePassword, hashPassword } from "../../lib/password.js";
 import { normalizePhone } from "../../lib/phone.js";
 import { RefreshToken } from "../../models/refresh-token.model.js";
@@ -98,6 +99,7 @@ export async function registerUser(input: {
   phoneCountry?: string;
   password: string;
   role: "buyer" | "seller";
+  guestId?: string;
 }) {
   const email = input.email.toLowerCase().trim();
   const { e164, country } = normalizePhone(input.phone, (input.phoneCountry as CountryCode) || "US");
@@ -121,11 +123,12 @@ export async function registerUser(input: {
   });
 
   await sendVerifyCode(user);
+  await claimGuestAssets(String(user._id), input.guestId);
   const tokens = await issueTokens(user);
   return { user: publicUser(user), ...tokens, needsVerification: true };
 }
 
-export async function loginUser(email: string, password: string) {
+export async function loginUser(email: string, password: string, guestId?: string) {
   const user = await User.findOne({ email: email.toLowerCase().trim() }).select(
     "+passwordHash +emailVerifySentAt",
   );
@@ -135,11 +138,13 @@ export async function loginUser(email: string, password: string) {
   const ok = await comparePassword(password, user.passwordHash);
   if (!ok) throw ApiError.unauthorized("Invalid email or password.");
 
-  const tokens = await issueTokens(user);
+  await claimGuestAssets(String(user._id), guestId);
+  const latest = (await User.findById(user._id)) || user;
+  const tokens = await issueTokens(latest);
   return {
-    user: publicUser(user),
+    user: publicUser(latest),
     ...tokens,
-    needsVerification: !user.emailVerifiedAt,
+    needsVerification: !latest.emailVerifiedAt,
   };
 }
 

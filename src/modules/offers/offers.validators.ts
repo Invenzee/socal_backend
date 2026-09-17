@@ -25,3 +25,7 @@ export const createOfferSchema = z.object({
     .trim()
     .regex(/^\d{5}(-\d{4})?$/, "Enter a valid ZIP code."),
 });
+
+export const latestOfferQuerySchema = z.object({
+  guestId: z.uuid(),
+});

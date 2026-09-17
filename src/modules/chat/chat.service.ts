@@ -66,6 +66,9 @@ export async function getConversation(userId: string, id: string) {
 export async function startConversation(userId: string, listingId: string, firstMessage?: string) {
   const listing = await Listing.findById(listingId);
   if (!listing || listing.status !== "approved") throw ApiError.notFound("Listing not found.");
+  if (!listing.seller) {
+    throw ApiError.badRequest("This seller has not created an account yet.");
+  }
   if (String(listing.seller) === userId) {
     throw ApiError.badRequest("You cannot chat on your own listing.");
   }

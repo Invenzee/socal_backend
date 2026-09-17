@@ -1,17 +1,36 @@
 import { Router } from "express";
+import { z } from "zod";
 import { cloudinary, configureCloudinary } from "../../config/cloudinary.js";
 import { env } from "../../config/env.js";
 import { asyncHandler } from "../../lib/asyncHandler.js";
 import { ApiError } from "../../lib/apiError.js";
-import { authenticate, requireVerified } from "../../middleware/authenticate.js";
+import { isGuestId } from "../../lib/guest-id.js";
+import { optionalAuth } from "../../middleware/authenticate.js";
+import { validate } from "../../middleware/error.js";
+import { guestUploadLimiter } from "../../middleware/rateLimit.js";
+
+const signatureBodySchema = z
+  .object({
+    guestId: z.uuid().optional(),
+  })
+  .default({});
 
 export const uploadsRouter = Router();
 
 uploadsRouter.post(
   "/signature",
-  authenticate,
-  requireVerified,
-  asyncHandler(async (_req, res) => {
+  guestUploadLimiter,
+  optionalAuth,
+  validate(signatureBodySchema),
+  asyncHandler(async (req, res) => {
+    if (req.user) {
+      if (!req.user.emailVerified) {
+        throw ApiError.forbidden("Verify your email to continue.", "EMAIL_UNVERIFIED");
+      }
+    } else if (!isGuestId(req.body?.guestId)) {
+      throw ApiError.unauthorized("Sign in or continue as a guest to upload photos.");
+    }
+
     if (!configureCloudinary()) {
       throw ApiError.badRequest("Image uploads are not configured.", "CLOUDINARY");
     }

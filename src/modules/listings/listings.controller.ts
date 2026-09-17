@@ -1,6 +1,8 @@
 import { asyncHandler } from "../../lib/asyncHandler.js";
+import { ApiError } from "../../lib/apiError.js";
 import { param } from "../../lib/param.js";
 import {
+  createGuestListing,
   createListing,
   deleteListing,
   getPublicListing,
@@ -33,6 +35,14 @@ export const mine = asyncHandler(async (req, res) => {
 
 export const create = asyncHandler(async (req, res) => {
   const item = await createListing(req.user!.id, req.body);
+  res.status(201).json({ success: true, data: { item } });
+});
+
+export const createGuest = asyncHandler(async (req, res) => {
+  if (req.user) {
+    throw ApiError.forbidden("Signed-in sellers should submit listings from their account.");
+  }
+  const item = await createGuestListing(req.body);
   res.status(201).json({ success: true, data: { item } });
 });
 

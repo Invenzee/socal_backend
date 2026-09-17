@@ -29,3 +29,25 @@ export const offerLimiter = rateLimit({
     error: { message: "Too many offer requests. Try again shortly.", code: "RATE_LIMIT" },
   },
 });
+
+export const guestListingLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 8,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: { message: "Too many listing requests. Try again shortly.", code: "RATE_LIMIT" },
+  },
+});
+
+export const guestUploadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: { message: "Too many upload requests. Try again shortly.", code: "RATE_LIMIT" },
+  },
+});

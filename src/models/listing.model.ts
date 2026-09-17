@@ -14,7 +14,13 @@ const imageSchema = new Schema(
 
 const listingSchema = new Schema(
   {
-    seller: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    seller: { type: Schema.Types.ObjectId, ref: "User", index: true },
+    guestId: { type: String, default: "", index: true },
+    guestEmail: { type: String, default: "", lowercase: true, trim: true },
+    guestName: { type: String, default: "", trim: true },
+    guestPhone: { type: String, default: "" },
+    claimedAt: { type: Date, default: null },
+    claimReminderSentAt: { type: Date, default: null },
     title: { type: String, required: true, trim: true },
     description: { type: String, required: true, trim: true },
     year: { type: Number, required: true, min: 1950, max: 2100 },
@@ -53,6 +59,7 @@ listingSchema.index({ status: 1, price: 1 });
 listingSchema.index({ status: 1, year: 1 });
 listingSchema.index({ status: 1, mileage: 1 });
 listingSchema.index({ title: "text", description: "text" });
+listingSchema.index({ guestId: 1, claimedAt: 1 });
 
 listingSchema.set("toJSON", {
   virtuals: true,

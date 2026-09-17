@@ -7,11 +7,13 @@ export const registerSchema = z.object({
   phoneCountry: z.string().length(2).optional(),
   password: z.string().min(8).max(72),
   role: z.enum(["buyer", "seller"]),
+  guestId: z.uuid().optional(),
 });
 
 export const loginSchema = z.object({
   email: z.email(),
   password: z.string().min(1),
+  guestId: z.uuid().optional(),
 });
 
 export const verifyEmailSchema = z.object({
