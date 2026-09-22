@@ -41,6 +41,17 @@ export const guestListingLimiter = rateLimit({
   },
 });
 
+export const contactLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 6,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: { message: "Too many messages. Try again shortly.", code: "RATE_LIMIT" },
+  },
+});
+
 export const guestUploadLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 20,

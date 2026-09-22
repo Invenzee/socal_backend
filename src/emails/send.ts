@@ -19,7 +19,7 @@ function getTransporter() {
   return transporter;
 }
 
-export async function sendEmail(to: string, subject: string, template: ReactElement) {
+export async function sendEmail(to: string, subject: string, template: ReactElement, replyTo?: string) {
   const html = await render(template);
   const mailer = getTransporter();
 
@@ -34,7 +34,7 @@ export async function sendEmail(to: string, subject: string, template: ReactElem
       to,
       subject,
       html,
-      replyTo: env.MAIL_REPLY_TO || undefined,
+      replyTo: replyTo || env.MAIL_REPLY_TO || undefined,
     });
   } catch (error) {
     console.error("[mail] send failed", error);

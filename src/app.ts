@@ -13,6 +13,7 @@ import { favoritesRouter } from "./modules/favorites/favorites.routes.js";
 import { chatRouter } from "./modules/chat/chat.routes.js";
 import { adminRouter } from "./modules/admin/admin.routes.js";
 import { offersRouter } from "./modules/offers/offers.routes.js";
+import { contactRouter } from "./modules/contact/contact.routes.js";
 
 export function createApp() {
   const app = express();
@@ -41,6 +42,7 @@ export function createApp() {
   api.use("/favorites", favoritesRouter);
   api.use("/conversations", chatRouter);
   api.use("/offers", offersRouter);
+  api.use("/contact", contactRouter);
   api.use("/admin", adminRouter);
 
   app.use(env.API_PREFIX, api);
