@@ -11,7 +11,7 @@ import { contactLimiter } from "../../middleware/rateLimit.js";
 import { validate } from "../../middleware/error.js";
 import { createContactSchema } from "./contact.validators.js";
 
-const FALLBACK_INBOX = "so.caltrucktrade@gmail.com";
+const FALLBACK_INBOX = "info@socaltrucktrade.com";
 
 export const contactRouter = Router();
 
