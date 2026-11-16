@@ -2,7 +2,8 @@ import { env } from "../../config/env.js";
 import { GuestListingReceivedTemplate } from "../../emails/guest-listing-received.js";
 import { ListingSubmittedTemplate } from "../../emails/listing-submitted.js";
 import { NewLeadTemplate } from "../../emails/new-lead.js";
-import { sendEmail } from "../../emails/send.js";
+import { FormDetailsTemplate } from "../../emails/form-details.js";
+import { sendEmail, sendStaffEmail } from "../../emails/send.js";
 import { ApiError } from "../../lib/apiError.js";
 import { paginationMeta, parsePagination } from "../../lib/paginate.js";
 import { normalizePhone } from "../../lib/phone.js";
@@ -165,6 +166,16 @@ export async function createListing(userId: string, body: Record<string, unknown
     "Listing submitted for review",
     ListingSubmittedTemplate({ name: seller.fullName, title: listing.title }),
   );
+  await notifyStaffOfListing({
+    title: listing.title,
+    year: listing.year,
+    mileage: listing.mileage,
+    price: listing.price,
+    name: seller.fullName,
+    email: seller.email,
+    phone: seller.phone,
+    description: listing.description,
+  });
 
   return Listing.findById(listing._id).populate(POPULATE);
 }
@@ -212,8 +223,54 @@ export async function createGuestListing(body: Record<string, unknown>) {
       signupUrl: env.APP_URL,
     }),
   );
+  await notifyStaffOfListing({
+    title: listing.title,
+    year: listing.year,
+    mileage: listing.mileage,
+    price: listing.price,
+    name: guestName,
+    email: guestEmail,
+    phone: guestPhone,
+    description: listing.description,
+  });
 
   return Listing.findById(listing._id).populate(POPULATE);
+}
+
+function notifyStaffOfListing(listing: {
+  title: string;
+  year: number;
+  mileage: number;
+  price: number;
+  name: string;
+  email: string;
+  phone: string;
+  description: string;
+}) {
+  const price = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(listing.price);
+  return sendStaffEmail(
+    `New listing: ${listing.title}`,
+    FormDetailsTemplate({
+      preview: `New listing from ${listing.name || "a seller"}`,
+      heading: "New listing submitted",
+      intro: "A seller submitted a truck for review.",
+      rows: [
+        { label: "Title", value: listing.title },
+        { label: "Year", value: String(listing.year) },
+        { label: "Price", value: price },
+        { label: "Mileage", value: String(listing.mileage) },
+        { label: "Name", value: listing.name },
+        { label: "Email", value: listing.email },
+        { label: "Phone", value: listing.phone },
+        { label: "Description", value: listing.description.slice(0, 500) },
+      ],
+    }),
+    listing.email,
+  );
 }
 
 export async function updateListing(userId: string, id: string, body: Record<string, unknown>, isAdmin = false) {

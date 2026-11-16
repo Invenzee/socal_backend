@@ -1,17 +1,14 @@
 import { Router } from "express";
 import type { CountryCode } from "libphonenumber-js";
-import { env } from "../../config/env.js";
 import { ContactReceivedTemplate } from "../../emails/contact-received.js";
 import { ContactThanksTemplate } from "../../emails/contact-thanks.js";
-import { sendEmail } from "../../emails/send.js";
+import { sendEmail, sendStaffEmail } from "../../emails/send.js";
 import { asyncHandler } from "../../lib/asyncHandler.js";
 import { normalizePhone } from "../../lib/phone.js";
 import { ContactMessage } from "../../models/contact-message.model.js";
 import { contactLimiter } from "../../middleware/rateLimit.js";
 import { validate } from "../../middleware/error.js";
 import { createContactSchema } from "./contact.validators.js";
-
-const FALLBACK_INBOX = "info@socaltrucktrade.com";
 
 export const contactRouter = Router();
 
@@ -33,9 +30,7 @@ contactRouter.post(
       message: message.trim(),
     });
 
-    const inbox = env.MAIL_REPLY_TO || env.ADMIN_EMAIL || FALLBACK_INBOX;
-    await sendEmail(
-      inbox,
+    await sendStaffEmail(
       `New contact message from ${cleanName}`,
       ContactReceivedTemplate({
         name: cleanName,

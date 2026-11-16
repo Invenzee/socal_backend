@@ -10,6 +10,8 @@ import { OfferLead } from "../../models/offer-lead.model.js";
 import { Make } from "../../models/make.model.js";
 import { TruckModel } from "../../models/truck-model.model.js";
 import { Condition } from "../../models/condition.model.js";
+import { FormDetailsTemplate } from "../../emails/form-details.js";
+import { sendStaffEmail } from "../../emails/send.js";
 import { createOfferSchema, latestOfferQuerySchema } from "./offers.validators.js";
 
 const DUPLICATE_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
@@ -84,6 +86,27 @@ offersRouter.post(
       city,
       zip,
     });
+
+    await sendStaffEmail(
+      `New offer request from ${fullName}`,
+      FormDetailsTemplate({
+        preview: `New offer request from ${fullName}`,
+        heading: "New offer request",
+        intro: `${fullName} submitted a Get an Offer form.`,
+        rows: [
+          { label: "Name", value: fullName },
+          { label: "Email", value: email.toLowerCase() },
+          { label: "Phone", value: e164 },
+          { label: "Vehicle", value: [year, makeDoc.name, modelDoc.name].filter(Boolean).join(" ") },
+          { label: "Mileage", value: String(mileage) },
+          { label: "Condition", value: conditionDoc.name },
+          { label: "License plate", value: licensePlate },
+          { label: "City", value: city },
+          { label: "ZIP", value: zip },
+        ],
+      }),
+      email.toLowerCase(),
+    );
 
     res.status(201).json({ success: true, data: { item } });
   }),

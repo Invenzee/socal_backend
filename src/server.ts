@@ -4,7 +4,7 @@ import { connectDb } from "./config/db.js";
 import { env } from "./config/env.js";
 import { configureCloudinary } from "./config/cloudinary.js";
 import { attachSocket } from "./modules/chat/socket.js";
-import { seedAdmin } from "./seeds/admin.seed.js";
+import { seedAdmin, seedInfoAdmin } from "./seeds/admin.seed.js";
 import { seedTaxonomy } from "./seeds/taxonomy.seed.js";
 import { backfillUserModes } from "./seeds/user-modes.seed.js";
 import { startListingClaimReminderJob } from "./jobs/listing-claim-reminder.js";
@@ -13,6 +13,7 @@ async function bootstrap() {
   await connectDb();
   configureCloudinary();
   await seedAdmin();
+  await seedInfoAdmin();
   await seedTaxonomy();
   await backfillUserModes();
 

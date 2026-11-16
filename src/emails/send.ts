@@ -19,6 +19,19 @@ function getTransporter() {
   return transporter;
 }
 
+export const INFO_ADMIN_EMAIL = "info@socaltrucktrade.com";
+
+export function staffInboxes() {
+  const emails = [env.ADMIN_EMAIL, env.MAIL_REPLY_TO, INFO_ADMIN_EMAIL]
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean);
+  return [...new Set(emails)];
+}
+
+export async function sendStaffEmail(subject: string, template: ReactElement, replyTo?: string) {
+  await Promise.all(staffInboxes().map((to) => sendEmail(to, subject, template, replyTo)));
+}
+
 export async function sendEmail(to: string, subject: string, template: ReactElement, replyTo?: string) {
   const html = await render(template);
   const mailer = getTransporter();
