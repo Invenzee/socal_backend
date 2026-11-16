@@ -11,6 +11,7 @@ import { ListingApprovedTemplate } from "../../emails/listing-approved.js";
 import { ListingRejectedTemplate } from "../../emails/listing-rejected.js";
 import { listAdmin, setListingStatus } from "../listings/listings.service.js";
 import { User } from "../../models/user.model.js";
+import { cloudinary, configureCloudinary } from "../../config/cloudinary.js";
 import { Listing } from "../../models/listing.model.js";
 import { Lead } from "../../models/lead.model.js";
 import { Conversation } from "../../models/conversation.model.js";
@@ -99,6 +100,28 @@ adminRouter.post(
       );
     }
     res.json({ success: true, data: { item: listing } });
+  }),
+);
+
+adminRouter.delete(
+  "/listings/:id",
+  asyncHandler(async (req, res) => {
+    const listing = await Listing.findById(param(req.params.id));
+    if (!listing) throw ApiError.notFound("Listing not found.");
+
+    const conversationIds = await Conversation.find({ listing: listing._id }).distinct("_id");
+    await Message.deleteMany({ conversation: { $in: conversationIds } });
+    await Conversation.deleteMany({ _id: { $in: conversationIds } });
+    await Lead.deleteMany({ listing: listing._id });
+    await Favorite.deleteMany({ listing: listing._id });
+
+    const publicIds = listing.images.map((image) => image.publicId).filter(Boolean);
+    if (publicIds.length && configureCloudinary()) {
+      await cloudinary.api.delete_resources(publicIds).catch(() => undefined);
+    }
+
+    await listing.deleteOne();
+    res.json({ success: true, data: { deleted: true } });
   }),
 );
 
